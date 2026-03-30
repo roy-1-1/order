@@ -48,26 +48,24 @@ class CombinedCredentials(BaseModel):
 def naver_get_token(client_id: str, client_secret: str) -> str:
     """네이버 커머스 API 액세스 토큰 발급"""
     timestamp = str(int(time.time() * 1000))
-    password = f"{client_id}_{timestamp}"
-    hashed = hmac.new(
-        client_secret.encode("utf-8"),
-        password.encode("utf-8"),
-        hashlib.sha256
-    ).digest()
-    signature = base64.b64encode(hashed).decode("utf-8")
+    message = f"{client_id}_{timestamp}"
+    signature = base64.b64encode(
+        hmac.new(
+            client_secret.encode("utf-8"),
+            message.encode("utf-8"),
+            hashlib.sha256,
+        ).digest()
+    ).decode("utf-8")
 
     url = "https://api.commerce.naver.com/external/v1/oauth2/token"
-    payload = "&".join([
-        f"client_id={client_id}",
-        f"timestamp={timestamp}",
-        f"client_secret_sign={signature}",
-        "grant_type=client_credentials",
-        "type=SELF",
-    ])
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded",
+    data = {
+        "client_id": client_id,
+        "timestamp": timestamp,
+        "client_secret_sign": signature,
+        "grant_type": "client_credentials",
+        "type": "SELF",
     }
-    resp = httpx.post(url, content=payload.encode("utf-8"), headers=headers, timeout=10)
+    resp = httpx.post(url, data=data, timeout=10)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
