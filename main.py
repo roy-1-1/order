@@ -12,6 +12,9 @@ import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
+
+logger = logging.getLogger("uvicorn.error")
 
 app = FastAPI(title="미발송 주문 대시보드")
 
@@ -239,6 +242,7 @@ async def get_orders(creds: CombinedCredentials):
             raw = await fetch_naver_orders(creds.naver)
             naver_items = aggregate_naver(raw)
         except Exception as e:
+            logger.error("네이버 API 오류: %s", e, exc_info=True)
             errors.append(f"네이버 오류: {str(e)}")
 
     if creds.imweb:
@@ -246,6 +250,7 @@ async def get_orders(creds: CombinedCredentials):
             raw = await fetch_imweb_orders(creds.imweb)
             imweb_items = aggregate_imweb(raw)
         except Exception as e:
+            logger.error("아임웹 API 오류: %s", e, exc_info=True)
             errors.append(f"아임웹 오류: {str(e)}")
 
     if not naver_items and not imweb_items and errors:
