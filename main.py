@@ -64,7 +64,10 @@ def naver_get_token(client_id: str, client_secret: str) -> str:
         "grant_type": "client_credentials",
         "type": "SELF",
     }
-    resp = httpx.post(url, data=payload, timeout=10)
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    resp = httpx.post(url, data=payload, headers=headers, timeout=10)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
