@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미발송 주문 대시보드</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F5F5F3; color: #1a1a1a; font-size: 14px; }
+  header { background: #fff; border-bottom: 1px solid #E5E5E3; padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { font-size: 15px; font-weight: 600; }
+  .logo span { color: #378ADD; }
+  .last-updated { font-size: 12px; color: #888; }
+  .container { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .card { background: #fff; border-radius: 12px; border: 1px solid #E5E5E3; padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1.25rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-bottom: 1.25rem; }
+  @media(max-width:600px) { .grid-2 { grid-template-columns: 1fr; } .grid-3 { grid-template-columns: 1fr 1fr; } }
+  .field label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+  .field input, .field select { width: 100%; padding: 8px 11px; border: 1px solid #DDD; border-radius: 8px; font-size: 13px; background: #FAFAFA; outline: none; color: #1a1a1a; }
+  .field input:focus, .field select:focus { border-color: #378ADD; background: #fff; box-shadow: 0 0 0 3px rgba(55,138,221,.1); }
+  .platform-label { font-size: 13px; font-weight: 600; margin-bottom: .75rem; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 500; }
+  .badge-naver { background: #E4F5E6; color: #2D7A33; }
+  .badge-imweb { background: #E6EEFB; color: #1A4F9C; }
+  .badge-both { background: #FFF3DC; color: #8A5700; }
+  .btn-row { display: flex; gap: 10px; margin-top: 1.25rem; }
+  .btn { padding: 9px 20px; font-size: 13px; font-weight: 500; border-radius: 8px; border: 1px solid #DDD; cursor: pointer; background: #fff; color: #333; transition: all .15s; }
+  .btn:hover { background: #F5F5F3; }
+  .btn-primary { background: #378ADD; color: #fff; border-color: #378ADD; }
+  .btn-primary:hover { background: #185FA5; border-color: #185FA5; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .metric { background: #F9F9F8; border-radius: 10px; padding: 1rem 1.1rem; }
+  .metric-label { font-size: 11px; color: #888; margin-bottom: 5px; }
+  .metric-value { font-size: 26px; font-weight: 600; color: #1a1a1a; line-height: 1; }
+  .metric-sub { font-size: 11px; color: #AAA; margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 11px; font-weight: 600; color: #888; text-align: left; padding: 7px 10px; border-bottom: 1px solid #EEEEED; white-space: nowrap; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid #F0F0EE; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #FAFAF9; }
+  .prod-name { font-weight: 500; font-size: 13px; }
+  .opt-name { font-size: 12px; color: #888; margin-top: 2px; }
+  .qty-num { font-weight: 600; font-size: 14px; text-align: right; }
+  .bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 5px; background: #EEEEED; border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .bar-fill { height: 100%; background: #378ADD; border-radius: 3px; }
+  .pct { font-size: 11px; color: #AAA; min-width: 32px; text-align: right; }
+  .divider { border: none; border-top: 1px solid #E5E5E3; margin: 1.25rem 0; }
+  .notice { font-size: 12px; color: #999; line-height: 1.7; margin-top: .75rem; }
+  .notice b { color: #666; font-weight: 600; }
+  .result-section { display: none; }
+  .alert { border-radius: 8px; padding: .75rem 1rem; font-size: 13px; margin-top: .75rem; }
+  .alert-error { background: #FFF0F0; color: #C0392B; border: 1px solid #F5BEBE; }
+  .alert-warn { background: #FFFBEA; color: #8A5700; border: 1px solid #F5E0A0; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc; border-top-color: #378ADD; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sort-btn { cursor: pointer; user-select: none; }
+  .sort-btn:hover { color: #378ADD; }
+  .tab-row { display: flex; border-bottom: 1px solid #E5E5E3; margin-bottom: 1.25rem; }
+  .tab { padding: 8px 16px; font-size: 13px; cursor: pointer; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab.active { color: #378ADD; border-bottom-color: #378ADD; font-weight: 600; }
+  .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filter-btn { padding: 4px 12px; border-radius: 20px; font-size: 12px; border: 1px solid #DDD; cursor: pointer; background: #fff; color: #555; }
+  .filter-btn.active { background: #378ADD; color: #fff; border-color: #378ADD; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">미발송 주문 <span>대시보드</span></div>
+  <div class="last-updated" id="last-updated"></div>
+</header>
+
+<div class="container">
+
+  <!-- 설정 카드 -->
+  <div class="card" id="settings-card">
+    <div class="card-title">API 설정</div>
+
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab('naver', this)">네이버 스마트스토어</div>
+      <div class="tab" onclick="switchTab('imweb', this)">아임웹</div>
+    </div>
+
+    <!-- 네이버 -->
+    <div id="tab-naver">
+      <div class="platform-label"><span class="badge badge-naver">Naver Commerce API</span></div>
+      <div class="grid-2">
+        <div class="field"><label>Client ID</label><input type="text" id="naver-id" placeholder="스마트스토어 센터에서 발급"></div>
+        <div class="field"><label>Client Secret</label><input type="password" id="naver-secret" placeholder=""></div>
+      </div>
+      <div class="field" style="margin-top:.75rem; max-width:220px">
+        <label>조회 기간</label>
+        <select id="naver-period">
+          <option value="7">최근 7일</option>
+          <option value="14">최근 14일</option>
+          <option value="30" selected>최근 30일</option>
+          <option value="60">최근 60일</option>
+          <option value="90">최근 90일</option>
+        </select>
+      </div>
+      <p class="notice">* <b>스마트스토어 센터 → 판매자 정보 → API 관리</b>에서 발급<br>* 미발송 상태: 결제완료, 상품준비중</p>
+    </div>
+
+    <!-- 아임웹 -->
+    <div id="tab-imweb" style="display:none">
+      <div class="platform-label"><span class="badge badge-imweb">아임웹 API</span></div>
+      <div class="grid-2">
+        <div class="field"><label>API Key</label><input type="text" id="imweb-key" placeholder="아임웹 관리자에서 발급"></div>
+        <div class="field"><label>Secret Key</label><input type="password" id="imweb-secret" placeholder=""></div>
+      </div>
+      <div class="field" style="margin-top:.75rem; max-width:220px">
+        <label>조회 기간</label>
+        <select id="imweb-period">
+          <option value="7">최근 7일</option>
+          <option value="14">최근 14일</option>
+          <option value="30" selected>최근 30일</option>
+          <option value="60">최근 60일</option>
+          <option value="90">최근 90일</option>
+        </select>
+      </div>
+      <p class="notice">* <b>아임웹 관리자 → 쇼핑몰 설정 → API 연동</b>에서 발급<br>* 미발송 상태: 주문확인, 배송준비중</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="fetch-btn" onclick="fetchOrders()">미발송 주문 조회</button>
+      <button class="btn" onclick="loadDemo()">샘플 데이터 보기</button>
+    </div>
+    <div id="error-box"></div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="result-section" id="result-section">
+
+    <div class="card">
+      <div class="card-title">요약</div>
+      <div class="grid-3">
+        <div class="metric"><div class="metric-label">총 미발송 수량</div><div class="metric-value" id="m-qty">-</div><div class="metric-sub">개</div></div>
+        <div class="metric"><div class="metric-label">상품 종류</div><div class="metric-value" id="m-items">-</div><div class="metric-sub">종</div></div>
+        <div class="metric"><div class="metric-label">채널</div><div class="metric-value" id="m-channel">-</div><div class="metric-sub">연동됨</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">상품별 미발송 수량</div>
+      <div class="filter-row">
+        <button class="filter-btn active" onclick="filterChannel('all', this)">전체</button>
+        <button class="filter-btn" onclick="filterChannel('naver', this)">네이버</button>
+        <button class="filter-btn" onclick="filterChannel('imweb', this)">아임웹</button>
+        <button class="filter-btn" onclick="filterChannel('both', this)">중복</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>상품명 / 옵션</th>
+              <th>채널</th>
+              <th class="sort-btn" onclick="sortBy('qty')" style="text-align:right">수량 ↕</th>
+              <th style="min-width:120px">비율</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+      </div>
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn" onclick="exportCSV()">CSV 다운로드</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+let allItems = [];
+let sortAsc = false;
+let activeFilter = 'all';
+
+function switchTab(name, el) {
+  document.getElementById('tab-naver').style.display = name === 'naver' ? '' : 'none';
+  document.getElementById('tab-imweb').style.display = name === 'imweb' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function showError(msg, warn=false) {
+  const box = document.getElementById('error-box');
+  box.innerHTML = `<div class="alert ${warn ? 'alert-warn' : 'alert-error'}">${msg}</div>`;
+  setTimeout(() => box.innerHTML = '', 6000);
+}
+
+async function fetchOrders() {
+  const btn = document.getElementById('fetch-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>조회 중...';
+
+  const body = {};
+
+  const naverId = document.getElementById('naver-id').value.trim();
+  const naverSecret = document.getElementById('naver-secret').value.trim();
+  if (naverId && naverSecret) {
+    body.naver = { client_id: naverId, client_secret: naverSecret, period_days: parseInt(document.getElementById('naver-period').value) };
+  }
+
+  const imwebKey = document.getElementById('imweb-key').value.trim();
+  const imwebSecret = document.getElementById('imweb-secret').value.trim();
+  if (imwebKey && imwebSecret) {
+    body.imweb = { api_key: imwebKey, secret_key: imwebSecret, period_days: parseInt(document.getElementById('imweb-period').value) };
+  }
+
+  if (!body.naver && !body.imweb) {
+    showError('최소 하나의 API 키를 입력해주세요.');
+    btn.disabled = false;
+    btn.textContent = '미발송 주문 조회';
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || '서버 오류');
+    if (data.errors && data.errors.length) showError(data.errors.join('<br>'), true);
+    renderResults(data);
+  } catch (e) {
+    showError('오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '미발송 주문 조회';
+  }
+}
+
+function renderResults(data) {
+  allItems = data.items;
+  const s = data.summary;
+
+  document.getElementById('m-qty').textContent = s.total_qty.toLocaleString();
+  document.getElementById('m-items').textContent = s.total_items.toLocaleString();
+  const channels = [s.naver_count > 0 ? '네이버' : '', s.imweb_count > 0 ? '아임웹' : ''].filter(Boolean);
+  document.getElementById('m-channel').textContent = channels.join('+') || '-';
+  document.getElementById('last-updated').textContent = '최종 조회: ' + new Date().toLocaleTimeString('ko-KR');
+  document.getElementById('result-section').style.display = '';
+
+  renderTable();
+}
+
+function renderTable() {
+  const filtered = allItems.filter(i => activeFilter === 'all' || i.channel === activeFilter);
+  const maxQty = filtered.length ? Math.max(...filtered.map(i => i.qty)) : 1;
+  const totalQty = filtered.reduce((s, i) => s + i.qty, 0) || 1;
+
+  const tags = {
+    naver: '<span class="badge badge-naver">네이버</span>',
+    imweb: '<span class="badge badge-imweb">아임웹</span>',
+    both: '<span class="badge badge-both">네이버+아임웹</span>',
+  };
+
+  document.getElementById('tbl-body').innerHTML = filtered.map(item => `
+    <tr>
+      <td>
+        <div class="prod-name">${item.name}</div>
+        <div class="opt-name">${item.option}</div>
+      </td>
+      <td>${tags[item.channel] || ''}</td>
+      <td class="qty-num">${item.qty.toLocaleString()}</td>
+      <td>
+        <div class="bar-wrap">
+          <div class="bar-bg"><div class="bar-fill" style="width:${Math.round(item.qty / maxQty * 100)}%"></div></div>
+          <span class="pct">${Math.round(item.qty / totalQty * 100)}%</span>
+        </div>
+      </td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" style="text-align:center;padding:2rem;color:#AAA">해당 항목 없음</td></tr>';
+}
+
+function filterChannel(ch, el) {
+  activeFilter = ch;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function sortBy(key) {
+  sortAsc = !sortAsc;
+  allItems.sort((a, b) => sortAsc ? a[key] - b[key] : b[key] - a[key]);
+  renderTable();
+}
+
+function exportCSV() {
+  const filtered = allItems.filter(i => activeFilter === 'all' || i.channel === activeFilter);
+  const rows = [['상품명', '옵션', '채널', '미발송수량']];
+  filtered.forEach(i => rows.push([`"${i.name}"`, `"${i.option}"`, i.channel, i.qty]));
+  const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `미발송주문_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function loadDemo() {
+  const demo = {
+    items: [
+      {name:'[오가닉] 루이보스 허브티 50입', option:'혼합 3종 세트', channel:'both', qty:47},
+      {name:'프리미엄 면 양말', option:'화이트 / M (240-260)', channel:'naver', qty:32},
+      {name:'유기농 귀리 그래놀라 300g', option:'플레인', channel:'both', qty:35},
+      {name:'[한정] 제주 감귤청 500ml', option:'단품', channel:'imweb', qty:28},
+      {name:'무형광 순면 수건 3P', option:'아이보리', channel:'both', qty:21},
+      {name:'데일리 에코백', option:'네이비', channel:'imweb', qty:19},
+      {name:'프리미엄 면 양말', option:'블랙 / L (265-280)', channel:'naver', qty:18},
+      {name:'무형광 순면 수건 3P', option:'그레이', channel:'naver', qty:14},
+      {name:'편백 발 매트', option:'대형 (50x80)', channel:'naver', qty:11},
+      {name:'비건 립밤 3종 세트', option:'베리 / 민트 / 플레인', channel:'imweb', qty:9},
+    ],
+    summary: { total_qty: 234, total_items: 10, naver_count: 6, imweb_count: 5 }
+  };
+  renderResults(demo);
+  document.getElementById('last-updated').textContent = '샘플 데이터';
+}
+</script>
+</body>
+</html>
